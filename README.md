@@ -51,33 +51,9 @@ a Zookeeper quorum has been formed).
     ZK_port = relation_get('port')
 
 
-## Deploying in Network-Restricted Environments
-This charm can be deployed in environments with limited network access. To
-deploy in this environment, you will need a local mirror to serve the packages
-and resources required by this charm.
-
-### Mirroring Packages
-You can setup a local mirror for apt packages using squid-deb-proxy.
-For instructions on configuring juju to use this, see the
-[Juju Proxy Documentation](https://juju.ubuntu.com/docs/howto-proxies.html).
-
-### Mirroring Resources
-In addition to apt packages, this charm requires a few binary resources
-which are normally hosted on Launchpad. If access to Launchpad is not
-available, the `jujuresources` library makes it easy to create a mirror
-of these resources:
-
-    sudo pip install jujuresources
-    juju resources fetch --all apache-zookeeper/resources.yaml -d /tmp/resources
-    juju resources serve -d /tmp/resources
-
-This will fetch all of the resources needed by this charm and serve them via a
-simple HTTP server. You can then set the `resources_mirror` config option to
-have the charm use this server for retrieving resources.
-
 
 ## Contact Information
-[bigdata-dev@canonical.com](mailto:bigdata-dev@canonical.com)
+[bigdata@lists.ubuntu.com](mailto:bigdata@lists.ubuntu.com)
 
 
 ## Help

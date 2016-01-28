@@ -68,3 +68,8 @@ def quorum_decreased(quorum):
     zk.decrease_quorum(nodeIP)
     
 
+@when('zookeeper.installed', 'zkclient.connected')
+def zk_client_connected(client):
+    config = dist_config()
+    port = config.port('zookeeper')
+    client.send_port(port)

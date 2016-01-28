@@ -10,7 +10,7 @@ description: |
   components, you must start the ZooKeeper service. 
 tags: ["bigdata", "hadoop", "apache"]
 provides:
-  zookeeper:
+  zkclient:
     interface: zookeeper
 peers:
   quorum:

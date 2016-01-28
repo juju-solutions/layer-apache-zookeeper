@@ -1,1 +1,1 @@
-includes: ['layer:basic', 'interface:zookeeper-quorum']
+includes: ['layer:basic', 'interface:zookeeper-quorum', 'interface:zookeeper']
