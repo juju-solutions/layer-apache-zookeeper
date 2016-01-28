@@ -1,6 +1,7 @@
 import jujuresources
 from jujubigdata import utils
 from charmhelpers.core import hookenv, unitdata
+from charmhelpers.core.hookenv import relation_get
 from charms.zkutils import update_zoo_cfg, getid
 
 
@@ -75,6 +76,14 @@ class Zookeeper(object):
 
         # update_zoo_cfg maintains a server.X entry in this unit's zoo.cfg
         update_zoo_cfg()
+
+    def increase_quorum(self, nodeList):
+        for n in nodeList:
+            unitIP = relation_get('private-address', unit=n)
+            update_zoo_cfg(zkid=getid(n), ip=unitIP)
+
+    def decrease_quorum(self, ip):
+        update_zoo_cfg(ip, remove=True)
 
     def start(self):
         zookeeper_home = self.dist_config.path('zookeeper')

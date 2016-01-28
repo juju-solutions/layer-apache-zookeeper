@@ -1,6 +1,6 @@
 import jujuresources
 from charms.reactive import when, when_not
-from charms.reactive import set_state, remove_state
+from charms.reactive import set_state
 from charmhelpers.core import hookenv
 from subprocess import check_call
 from glob import glob
@@ -48,3 +48,23 @@ def install_zookeeper(*args):
         set_state('zookeeper.installed')
         hookenv.status_set('active', 'Ready')
         zk.start()
+
+
+@when('zookeeper.installed', 'quorum.increased')
+def quorum_incresed(quorum):
+    from charms.zookeeper import Zookeeper  # in lib/charms; not available until after bootstrap
+
+    nodes = quorum.get_nodes()
+    zk = Zookeeper(dist_config())
+    zk.increase_quorum(nodes)
+
+
+@when('zookeeper.installed', 'quorum.decreased')
+def quorum_decreased(quorum):
+    from charms.zookeeper import Zookeeper  # in lib/charms; not available until after bootstrap
+
+    nodeIP = quorum.get_departed()
+    zk = Zookeeper(dist_config())
+    zk.decrease_quorum(nodeIP)
+    
+
