@@ -78,12 +78,13 @@ class Zookeeper(object):
         update_zoo_cfg()
 
     def increase_quorum(self, nodeList):
-        for n in nodeList:
-            unitIP = relation_get('private-address', unit=n)
-            update_zoo_cfg(zkid=getid(n), ip=unitIP)
+        for unitId, unitIp in nodeList:
+            update_zoo_cfg(zkid=getid(unitId), ip=unitIp)
 
-    def decrease_quorum(self, ip):
-        update_zoo_cfg(ip, remove=True)
+    def decrease_quorum(self, nodeList):
+        for unitId, unitIp in nodeList:
+            update_zoo_cfg(zkid=getid(unitId), remove=True)
+
 
     def start(self):
         zookeeper_home = self.dist_config.path('zookeeper')

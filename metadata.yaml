@@ -13,6 +13,6 @@ provides:
   zkclient:
     interface: zookeeper
 peers:
-  quorum:
+  instance:
     interface: zookeeper-quorum
     
