@@ -85,6 +85,13 @@ class Zookeeper(object):
         for unitId, unitIp in nodeList:
             update_zoo_cfg(zkid=getid(unitId), remove=True)
 
+    def open_ports(self):
+        for port in self.dist_config.exposed_ports('zookeeper'):
+            hookenv.open_port(port)
+
+    def close_ports(self):
+        for port in self.dist_config.exposed_ports('zookeeper'):
+            hookenv.close_port(port)
 
     def start(self):
         zookeeper_home = self.dist_config.path('zookeeper')

@@ -21,6 +21,7 @@ def install_zookeeper(*args):
         zk.install()
         set_state('zookeeper.installed')
         hookenv.status_set('active', 'Ready')
+        zk.open_ports()
         zk.start()
 
 
