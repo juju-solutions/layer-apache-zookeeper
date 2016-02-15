@@ -21,12 +21,14 @@ def install_zookeeper(*args):
         zk.install()
         set_state('zookeeper.installed')
         hookenv.status_set('active', 'Ready')
+        zk.open_ports()
         zk.start()
 
 
-@when('zookeeper.installed', 'instance.related')
+@when('zookeeper.installed', 'instance.relating')
 def quorum_incresed(instances):
     nodes = instances.get_nodes()
+    instances.dismiss_relating()
     zk = Zookeeper(dist_config())
     zk.increase_quorum(nodes)
 
@@ -34,7 +36,7 @@ def quorum_incresed(instances):
 @when('zookeeper.installed', 'instance.departing')
 def quorum_decreased(instances):
     nodes = instances.get_nodes()
-    instances.dismiss()
+    instances.dismiss_departing()
     zk = Zookeeper(dist_config())
     zk.decrease_quorum(nodes)
     
