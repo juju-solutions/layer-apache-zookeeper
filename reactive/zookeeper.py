@@ -1,48 +1,42 @@
-import jujuresources
 from charms.reactive import when, when_not
 from charms.reactive import set_state
+
 from charmhelpers.core import hookenv
-from jujubigdata.utils import DistConfig
+
 from charms.zookeeper import Zookeeper
 
-
-def dist_config():
-    if not getattr(dist_config, 'value', None):
-        zookeeper_reqs = ['vendor', 'packages',  'groups', 'users', 'dirs', 'ports']
-        dist_config.value = DistConfig(filename='dist.yaml', required_keys=zookeeper_reqs)
-    return dist_config.value
+from jujubigdata.utils import DistConfig
 
 
 @when_not('zookeeper.installed')
 def install_zookeeper(*args):
-    zk = Zookeeper(dist_config())
+    zk = Zookeeper()
     if zk.verify_resources():
         hookenv.status_set('maintenance', 'Installing Zookeeper')
         zk.install()
-        set_state('zookeeper.installed')
         hookenv.status_set('active', 'Ready')
         zk.open_ports()
         zk.start()
+        set_state('zookeeper.installed')
 
 
-@when('zookeeper.installed', 'instance.relating')
-def quorum_incresed(instances):
-    nodes = instances.get_nodes()
-    instances.dismiss_relating()
-    zk = Zookeeper(dist_config())
+@when('zookeeper.installed', 'zkpeer.joined')
+def quorum_add(zkpeer):
+    nodes = zkpeer.get_nodes()
+    zk = Zookeeper()
     zk.increase_quorum(nodes)
+    zkpeer.dismiss_joined()
 
 
-@when('zookeeper.installed', 'instance.departing')
-def quorum_decreased(instances):
-    nodes = instances.get_nodes()
-    instances.dismiss_departing()
-    zk = Zookeeper(dist_config())
+@when('zookeeper.installed', 'zkpeer.departed')
+def quorum_remove(zkpeer):
+    nodes = zkpeer.get_nodes()
+    zk = Zookeeper()
     zk.decrease_quorum(nodes)
-    
+    zkpeer.dismiss_departed()
 
-@when('zookeeper.installed', 'zkclient.connected')
-def zk_client_connected(client):
-    config = dist_config()
-    port = config.port('zookeeper')
+
+@when('zookeeper.installed', 'zkclient.joined')
+def serve_client(client):
+    port = DistConfig().port('zookeeper')
     client.send_port(port)
