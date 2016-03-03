@@ -15,8 +15,8 @@ class TestDeploy(unittest.TestCase):
 
         cls.d.add('zookeeper', charm='cs:~bigdata-dev/trusty/apache-zookeeper', units=3)
          
-        cls.d.setup(timeout=9000)
-        cls.d.sentry.wait()
+        cls.d.setup(timeout=900)
+        cls.d.sentry.wait(timeout=1800)
         cls.unit = cls.d.sentry.unit['zookeeper'][0]
 
     def test_deploy(self):
