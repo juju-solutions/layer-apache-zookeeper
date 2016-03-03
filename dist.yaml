@@ -6,30 +6,23 @@ packages:
     - 'unzip'
     - 'openjdk-7-jdk'
 groups:
-    - 'hadoop'
+    - 'zookeeper'
 users:
     zookeeper:
-        groups: ['hadoop']
+        groups: ['zookeeper']
 dirs:
     zookeeper:
         path: '/usr/lib/zookeeper'
-        owner: 'zookeeper'
-        group: 'hadoop'
     zookeeper_conf:
         path: '/etc/zookeeper/conf'
-        owner: 'zookeeper'
-        group: 'hadoop'
     zookeeper_data_dir:
         path: '/var/lib/zookeeper'
         owner: 'zookeeper'
-        group: 'hadoop'
         perms: 0755
     zookeeper_log_dir:
         path: '/var/log/zookeeper'
         owner: 'zookeeper'
-        group: 'hadoop'
         perms: 0755
-
 ports:
     # Ports that need to be exposed, overridden, or manually specified.
     # Only expose ports serving a UI or external API (i.e., namenode and
