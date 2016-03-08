@@ -1,38 +1,26 @@
 import jujuresources
 from jujubigdata import utils
-from charmhelpers.core import hookenv, unitdata
-from charmhelpers.core.hookenv import relation_get
+from charmhelpers.core import hookenv
 from charms.zkutils import update_zoo_cfg, getid
 
 
 class Zookeeper(object):
-    def __init__(self, dist_config):
-        self.dist_config = dist_config
+    def __init__(self, dist_config=None):
+        self.dist_config = dist_config or utils.DistConfig()
         self.resources = {
             'zookeeper': 'zookeeper-%s' % utils.cpu_arch(),
         }
         self.verify_resources = utils.verify_resources(*self.resources.values())
 
-    def is_installed(self):
-        return unitdata.kv().get('zookeeper.available')
-
-    def install(self, force=False):
-        if not force and self.is_installed():
-            return
-
+    def install(self):
+        self.dist_config.add_users()
+        self.dist_config.add_dirs()
+        self.dist_config.add_packages()
         jujuresources.install(self.resources['zookeeper'],
                               destination=self.dist_config.path('zookeeper'),
                               skip_top_level=True)
-
-        self.dist_config.add_users()
-        
-        #TODO(kjackal): Check why this is needed
-        utils.disable_firewall()
-        self.dist_config.add_dirs()
-        self.dist_config.add_packages()
         self.setup_zookeeper_config()
         self.configure_zookeeper()
-        unitdata.kv().set('zookeeper.available', True)
 
     def setup_zookeeper_config(self):
         '''
@@ -71,7 +59,7 @@ class Zookeeper(object):
         in ASCII.
         '''
         myid = self.dist_config.path('zookeeper_data_dir') / 'myid'
-        with open(myid, 'w+') as df:
+        with open(myid, 'w') as df:
             df.writelines(getid(hookenv.local_unit()))
 
         # update_zoo_cfg maintains a server.X entry in this unit's zoo.cfg
@@ -104,4 +92,3 @@ class Zookeeper(object):
 
     def cleanup(self):
         self.dist_config.remove_dirs()
-        unitdata.kv().set('zookeeper.installed', False)
