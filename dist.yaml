@@ -2,9 +2,6 @@
 # The aim is to make it easier to update / extend the charms with
 # minimal changes to the shared code in charmhelpers.
 vendor: 'apache'
-packages:
-    - 'unzip'
-    - 'openjdk-7-jdk'
 groups:
     - 'zookeeper'
 users:

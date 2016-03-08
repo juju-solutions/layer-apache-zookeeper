@@ -15,7 +15,6 @@ class Zookeeper(object):
     def install(self):
         self.dist_config.add_users()
         self.dist_config.add_dirs()
-        self.dist_config.add_packages()
         jujuresources.install(self.resources['zookeeper'],
                               destination=self.dist_config.path('zookeeper'),
                               skip_top_level=True)
