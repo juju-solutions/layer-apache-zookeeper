@@ -16,8 +16,8 @@ from charmhelpers.core.hookenv import local_unit, unit_private_ip
 from jujubigdata import utils
 
 
-def getid(unitID):
-    return unitID.split("/")[1]
+def getid(unit_id):
+    return unit_id.split("/")[1]
 
 
 def update_zoo_cfg(zkid=getid(local_unit()), ip=unit_private_ip(), remove=False):
@@ -30,32 +30,32 @@ def update_zoo_cfg(zkid=getid(local_unit()), ip=unit_private_ip(), remove=False)
     key = "server.{}".format(zkid)
     value = "={}:2888:3888".format(ip)
     if remove:
-        removeKV(zookeeper_cfg, key)
+        remove_kv(zookeeper_cfg, key)
         return
-    addKV(zookeeper_cfg, key, value)
+    add_kv(zookeeper_cfg, key, value)
 
     # restart the zk server after alterting zoo.cfg
     zookeeper_bin = os.environ.get('ZOO_BIN_DIR', '/usr/lib/zookeeper/bin')
     utils.run_as('zookeeper', '{}/zkServer.sh'.format(zookeeper_bin), 'restart')
 
 
-def addKV(filePath, key, value):
+def add_kv(file_path, key, value):
     found = False
-    with open(filePath, 'r', encoding='utf-8') as f:
+    with open(file_path, 'r', encoding='utf-8') as f:
         contents = f.readlines()
         for l in range(0, len(contents)):
             if contents[l].startswith(key):
-                contents[l] = key+value+"\n"
+                contents[l] = key + value + "\n"
                 found = True
     if not found:
-        contents.append(key+value+"\n")
-    with open(filePath, 'w', encoding='utf-8') as f:
+        contents.append(key + value + "\n")
+    with open(file_path, 'w', encoding='utf-8') as f:
         f.writelines(contents)
 
 
-def removeKV(filePath, key):
+def remove_kv(file_path, key):
     found = False
-    with open(filePath, 'r', encoding='utf-8') as f:
+    with open(file_path, 'r', encoding='utf-8') as f:
         contents = f.readlines()
         for l in range(0, len(contents)):
             if contents[l].startswith(key):
@@ -63,5 +63,5 @@ def removeKV(filePath, key):
                 found = True
                 break
     if found:
-        with open(filePath, 'w', encoding='utf-8') as f:
+        with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(contents)

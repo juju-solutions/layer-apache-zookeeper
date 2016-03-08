@@ -65,12 +65,12 @@ class Zookeeper(object):
         # update_zoo_cfg maintains a server.X entry in this unit's zoo.cfg
         update_zoo_cfg()
 
-    def increase_quorum(self, nodeList):
-        for unitId, unitIp in nodeList:
+    def increase_quorum(self, node_list):
+        for unitId, unitIp in node_list:
             update_zoo_cfg(zkid=getid(unitId), ip=unitIp)
 
-    def decrease_quorum(self, nodeList):
-        for unitId, unitIp in nodeList:
+    def decrease_quorum(self, node_list):
+        for unitId, unitIp in node_list:
             update_zoo_cfg(zkid=getid(unitId), remove=True)
 
     def open_ports(self):
