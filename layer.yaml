@@ -1,3 +1,4 @@
+repo: git@github.com:juju-solutions/layer-apache-zookeeper.git
 includes: ['layer:basic', 'interface:zookeeper-quorum', 'interface:zookeeper']
 options:
   basic:
