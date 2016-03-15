@@ -3,7 +3,7 @@ from charms.reactive import set_state
 
 from charmhelpers.core import hookenv
 
-from charms.zookeeper import Zookeeper
+from charms.layer.zookeeper import Zookeeper
 
 from jujubigdata.utils import DistConfig
 
