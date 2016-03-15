@@ -1,7 +1,14 @@
 import jujuresources
+
+from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
+                                       open_port, close_port)
+
 from jujubigdata import utils
-from charmhelpers.core import hookenv
-from charms.zkutils import update_zoo_cfg, getid
+
+
+def getid(unit_id):
+    """Utility function to return the unit number."""
+    return unit_id.split("/")[1]
 
 
 class Zookeeper(object):
@@ -19,13 +26,14 @@ class Zookeeper(object):
                               destination=self.dist_config.path('zookeeper'),
                               skip_top_level=True)
         self.setup_zookeeper_config()
-        self.configure_zookeeper()
 
     def setup_zookeeper_config(self):
-        '''
-        copy the default configuration files to zookeeper_conf property
+        """
+        Setup Zookeeper configuration based on default config.
+
+        Copy the default configuration files to zookeeper_conf property
         defined in dist.yaml
-        '''
+        """
         default_conf = self.dist_config.path('zookeeper') / 'conf'
         zookeeper_conf = self.dist_config.path('zookeeper_conf')
         zookeeper_conf.rmtree_p()
@@ -50,35 +58,40 @@ class Zookeeper(object):
             env['ZOO_BIN_DIR'] = zookeeper_bin
             env['ZOO_LOG_DIR'] = self.dist_config.path('zookeeper_log_dir')
 
-    def configure_zookeeper(self):
-        '''
+    def initial_config(self):
+        """
+        Perform initial Zookeeper configuration.
+
         The entries of the form server.X list the servers that make up the ZooKeeper
         service. When the server starts up, it knows which server it is by looking for
-        the file myid in the data directory. That file contains the unit number
+        the file 'myid' in the data directory. That file contains the unit number
         in ASCII.
-        '''
+
+        After, 'myid' is written, this function will call update_zoo_cfg() with
+        default values to populate zoo.cfg with this local unit's info.
+        """
         myid = self.dist_config.path('zookeeper_data_dir') / 'myid'
         with open(myid, 'w') as df:
-            df.writelines(getid(hookenv.local_unit()))
+            df.writelines(getid(local_unit()))
 
         # update_zoo_cfg maintains a server.X entry in this unit's zoo.cfg
-        update_zoo_cfg()
+        self.update_zoo_cfg()
 
     def increase_quorum(self, node_list):
         for unitId, unitIp in node_list:
-            update_zoo_cfg(zkid=getid(unitId), ip=unitIp)
+            self.update_zoo_cfg(zkid=getid(unitId), ip=unitIp)
 
     def decrease_quorum(self, node_list):
         for unitId, unitIp in node_list:
-            update_zoo_cfg(zkid=getid(unitId), remove=True)
+            self.update_zoo_cfg(zkid=getid(unitId), remove=True)
 
     def open_ports(self):
         for port in self.dist_config.exposed_ports('zookeeper'):
-            hookenv.open_port(port)
+            open_port(port)
 
     def close_ports(self):
         for port in self.dist_config.exposed_ports('zookeeper'):
-            hookenv.close_port(port)
+            close_port(port)
 
     def start(self):
         zookeeper_home = self.dist_config.path('zookeeper')
@@ -91,3 +104,38 @@ class Zookeeper(object):
 
     def cleanup(self):
         self.dist_config.remove_dirs()
+
+    def update_zoo_cfg(self, zkid=getid(local_unit()), ip=unit_private_ip(), remove=False):
+        """
+        Add or remove Zookeeper units from zoo.cfg.
+
+        Configuration for a Zookeeper quorum requires listing all unique servers
+        (server.X=<ip>:2888:3888) in the zoo.cfg. This function manages server.X
+        entries.
+        """
+        zookeeper_cfg = "{}/zoo.cfg".format(self.dist_config.path('zookeeper_conf'))
+        key = "server.{}".format(zkid)
+        value = "={}:2888:3888".format(ip)
+        found = False
+        if remove:
+            with open(zookeeper_cfg, 'r', encoding='utf-8') as f:
+                contents = f.readlines()
+                for l in range(0, len(contents)):
+                    if contents[l].startswith(key):
+                        contents.pop(l)
+                        found = True
+                        break
+            if found:
+                with open(zookeeper_cfg, 'w', encoding='utf-8') as f:
+                    f.writelines(contents)
+        else:
+            with open(zookeeper_cfg, 'r', encoding='utf-8') as f:
+                contents = f.readlines()
+                for l in range(0, len(contents)):
+                    if contents[l].startswith(key):
+                        contents[l] = key + value + "\n"
+                        found = True
+            if not found:
+                contents.append(key + value + "\n")
+            with open(zookeeper_cfg, 'w', encoding='utf-8') as f:
+                f.writelines(contents)
