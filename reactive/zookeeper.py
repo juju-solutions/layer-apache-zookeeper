@@ -1,10 +1,7 @@
 from charms.reactive import when, when_not
 from charms.reactive import set_state
-
 from charmhelpers.core import hookenv
-
 from charms.zookeeper import Zookeeper
-
 from jujubigdata.utils import DistConfig
 
 
@@ -39,4 +36,5 @@ def quorum_remove(zkpeer):
 @when('zookeeper.installed', 'zkclient.joined')
 def serve_client(client):
     port = DistConfig().port('zookeeper')
-    client.send_port(port)
+    rest_port = DistConfig().port('zookeeper-rest')
+    client.send_port(port, rest_port)

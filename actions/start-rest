@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+source /etc/environment
+cd $ZOO_REST
+su zookeeper -c "nohup ant run &"

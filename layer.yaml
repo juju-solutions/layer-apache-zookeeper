@@ -4,3 +4,4 @@ options:
     packages:
       - default-jre-headless
       - unzip
+      - ant

@@ -1,0 +1,4 @@
+start-rest:
+    description: Start the Zookeeper REST service
+stop-rest:
+    description: Stop the Zookeeper REST service
