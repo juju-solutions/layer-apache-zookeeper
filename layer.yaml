@@ -5,3 +5,4 @@ options:
       - default-jre-headless
       - unzip
       - ant
+      - default-jdk
