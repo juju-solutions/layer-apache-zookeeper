@@ -1,8 +1,8 @@
 import jujuresources
 import os
-import subprocess
 from jujubigdata import utils
 from charmhelpers.core import hookenv
+from charmhelpers.core.host import chownr
 from charms.zkutils import update_zoo_cfg, getid
 from subprocess import Popen
 
@@ -32,7 +32,7 @@ class Zookeeper(object):
         # 2. Write to the /usr/lib/zookeeper
         utils.run_as('root', 'mkhomedir_helper', 'zookeeper')
         os.chdir(self.dist_config.path('zookeeper'))
-        subprocess.check_call(["chown", "-R", "zookeeper", "."])
+        chownr(self.dist_config.path('zookeeper'), 'zookeeper', 'zookeeper', chowntopdir=True)
         utils.run_as('zookeeper', 'ant')
 
     def setup_zookeeper_config(self):
