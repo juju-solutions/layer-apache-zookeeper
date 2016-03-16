@@ -1,7 +1,7 @@
-from charms.reactive import when, when_not
+from charms.reactive import when, when_file_changed, when_not
 from charms.reactive import set_state
 from charmhelpers.core import hookenv
-from charms.zookeeper import Zookeeper
+from charms.layer.zookeeper import Zookeeper
 from jujubigdata.utils import DistConfig
 
 
@@ -11,10 +11,29 @@ def install_zookeeper(*args):
     if zk.verify_resources():
         hookenv.status_set('maintenance', 'Installing Zookeeper')
         zk.install()
-        hookenv.status_set('active', 'Ready')
-        zk.open_ports()
-        zk.start()
+        zk.initial_config()
         set_state('zookeeper.installed')
+        hookenv.status_set('maintenance', 'Zookeeper Installed')
+
+
+@when('zookeeper.installed')
+@when_not('zookeeper.started')
+def start_zookeeper():
+    zk = Zookeeper()
+    zk.start()
+    zk.open_ports()
+    set_state('zookeeper.started')
+    hookenv.status_set('active', 'Ready')
+
+
+@when('zookeeper.started')
+@when_file_changed(DistConfig().path('zookeeper_conf') / 'zoo.cfg')
+def restart_zookeeper():
+    hookenv.status_set('maintenance', 'Server config changed: restarting Zookeeper')
+    zk = Zookeeper()
+    zk.stop()
+    zk.start()
+    hookenv.status_set('active', 'Ready')
 
 
 @when('zookeeper.installed', 'zkpeer.joined')
