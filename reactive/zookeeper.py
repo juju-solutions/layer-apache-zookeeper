@@ -54,6 +54,7 @@ def quorum_remove(zkpeer):
 
 @when('zookeeper.installed', 'zkclient.joined')
 def serve_client(client):
-    port = DistConfig().port('zookeeper')
-    rest_port = DistConfig().port('zookeeper-rest')
+    config = DistConfig()
+    port = config.port('zookeeper')
+    rest_port = config.port('zookeeper-rest')
     client.send_port(port, rest_port)

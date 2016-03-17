@@ -1,10 +1,10 @@
+import time
 import jujuresources
-from time import sleep
 from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
-                                       open_port, close_port)
+                                       open_port, close_port, log)
 from charmhelpers.core.host import chownr, chdir
 from jujubigdata import utils
-from subprocess import Popen
+from subprocess import Popen, check_output, CalledProcessError
 
 
 def getid(unit_id):
@@ -123,17 +123,21 @@ class Zookeeper(object):
         zookeeper_rest = self.dist_config.path('zookeeper') / 'src/contrib/rest'
         zkrest_logs = self.dist_config.path('zookeeper_log_dir') / 'rest.out'
         zkrest_buildxml = zookeeper_rest / 'build.xml'
-        self.run_bg('zookeeper', zkrest_logs, 'nohup', 'ant', 'run', '-f', zkrest_buildxml)
+
+        utils.run_bg_as('zookeeper', zkrest_logs, 'nohup', 'ant', 'run', '-f', zkrest_buildxml)
+        # We set a generous timeout here, for _realy_ slow networks.
+        pids = self.wait_process_start('RestMain', 240, 'zookeeper')
+
+        if len(pids) == 0:
+            raise Exception("REST API could not start.")
+        if len(pids) > 1:
+            raise Exception("Multiple REST API servers running.")
+        log("REST API started (pid: {})".format(pids[0]))
 
     def stop_rest(self):
-        print("*** Stopping rest ***")
-        try:
-            # Give some time to the java process to spawn
-            # in the case of a start followed by an immediate stop
-            sleep(30)
+        pids = self.wait_process_start('RestMain', 0, 'zookeeper')
+        if not len(pids) == 0:
             utils.run_as('root', 'pkill', '-f', 'RestMain')
-        except:
-            pass
 
     def cleanup(self):
         self.dist_config.remove_dirs()
@@ -173,16 +177,29 @@ class Zookeeper(object):
             with open(zookeeper_cfg, 'w', encoding='utf-8') as f:
                 f.writelines(contents)
 
-    def run_bg(self, user, output_log, command, *args):
+    def wait_process_start(self, name, wait_secs, user=None):
         """
-        Run a command as the given user in the background.
+        Wait for a process to appear and return its pid
 
-        :param str user: User to run flume agent
-        :param str command: Command to run
-        :param list args: Additional args to pass to the command
+        :param str name: Cmd pattern to search for
+        :param int wait_sec: Seconds to wait for the process to spawn
+        :param string user: Owner fo the process
+        :returns: list of process ids found. May return an empty list
         """
-        parts = [command] + list(args)
-        quoted = ' '.join("'%s'" % p for p in parts)
-        e = utils.read_etc_env()
-        Popen(['su', user, '-c', '{} &> {} &'.format(quoted, output_log)],
-              env=e)
+        timeout = time.time() + wait_secs
+        pid = -1
+        pgrep_args = ['pgrep', '-f', name]
+        if user:
+            pgrep_args += ['-u', user]
+
+        while True:
+            try:
+                pids = check_output(pgrep_args)
+                return pids.splitlines()
+            except CalledProcessError:
+                log("Waiting for REST Api")
+
+            if time.time() > timeout:
+                return []
+
+            time.sleep(5)

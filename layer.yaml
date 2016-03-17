@@ -3,7 +3,6 @@ includes: ['layer:basic', 'interface:zookeeper-quorum', 'interface:zookeeper']
 options:
   basic:
     packages:
-      - default-jre-headless
       - unzip
       - ant
       - default-jdk

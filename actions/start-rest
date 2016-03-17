@@ -2,5 +2,7 @@
 set -e
 
 source /etc/environment
-cd $ZOO_REST
-su zookeeper -c "nohup ant run &"
+if [[ -d ${ZOO_REST} ]]; then
+  cd ${ZOO_REST}
+  su zookeeper -c "nohup ant run &"
+fi
