@@ -37,6 +37,17 @@ A successful deployment will report the service mode as either `standalone`
 a Zookeeper quorum has been formed).
 
 
+## REST Api
+Zookeeper REST Api can be enabled/disabled either through an action or
+via a config variable:
+
+    juju action do zookeeper/0 start-rest 
+    juju action do zookeeper/0 stop-rest 
+
+or
+ 
+    juju set zookeeper rest=true 
+
 ## Integrate Zookeeper into another charm
 1) Add following lines to your charm's metadata.yaml:
 
