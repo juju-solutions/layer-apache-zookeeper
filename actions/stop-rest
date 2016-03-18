@@ -2,3 +2,4 @@
 set -e
 
 pkill -f RestMain
+

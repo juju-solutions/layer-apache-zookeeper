@@ -1,8 +1,9 @@
 import time
 import jujuresources
 from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
-                                       open_port, close_port, log)
+                                       open_port, close_port, log, config)
 from charmhelpers.core.host import chownr, chdir
+from charmhelpers.core import unitdata
 from jujubigdata import utils
 from subprocess import Popen, check_output, CalledProcessError
 
@@ -26,18 +27,17 @@ class Zookeeper(object):
         jujuresources.install(self.resources['zookeeper'],
                               destination=self.dist_config.path('zookeeper'),
                               skip_top_level=True)
-        self.build_zkrest()
         self.setup_zookeeper_config()
 
-    def build_zkrest(self):
+    def init_zkrest(self):
         # Zookeeper user needs to compile the rest contrib server.
         # So zookeeper needs to:
         # 1. Have a home dir for ant cache to exist
         # 2. Write to the /usr/lib/zookeeper
-        utils.run_as('root', 'mkhomedir_helper', 'zookeeper')
         chownr(self.dist_config.path('zookeeper'), 'zookeeper', 'zookeeper', chowntopdir=True)
         with chdir(self.dist_config.path('zookeeper')):
             utils.run_as('zookeeper', 'ant')
+        unitdata.kv().set('rest.initialised', True)
 
     def setup_zookeeper_config(self):        
         """
@@ -111,7 +111,8 @@ class Zookeeper(object):
         zookeeper_home = self.dist_config.path('zookeeper')
         self.stop()
         utils.run_as('zookeeper', '{}/bin/zkServer.sh'.format(zookeeper_home), 'start')
-        self.start_rest()
+        if config().get('rest'):
+            self.start_rest()
 
     def stop(self):
         zookeeper_home = self.dist_config.path('zookeeper')
@@ -119,6 +120,9 @@ class Zookeeper(object):
         self.stop_rest()
 
     def start_rest(self):
+        if not unitdata.kv().get('rest.initialised'):
+            log("Initialising REST API")
+            self.init_zkrest()
         self.stop_rest()
         zookeeper_rest = self.dist_config.path('zookeeper') / 'src/contrib/rest'
         zkrest_logs = self.dist_config.path('zookeeper_log_dir') / 'rest.out'
@@ -197,7 +201,7 @@ class Zookeeper(object):
                 pids = check_output(pgrep_args)
                 return pids.splitlines()
             except CalledProcessError:
-                log("Waiting for REST Api")
+                log("REST service not running")
 
             if time.time() > timeout:
                 return []

@@ -36,6 +36,18 @@ def restart_zookeeper():
     hookenv.status_set('active', 'Ready')
 
 
+@when('zookeeper.started', 'config.changed.rest')
+def rest_config():
+    hookenv.status_set('maintenance', 'Updating REST service')
+    zk = Zookeeper()
+    config = hookenv.config()
+    if config['rest']:
+        zk.start_rest()
+    else:
+        zk.stop_rest()
+    hookenv.status_set('active', 'Ready')
+
+
 @when('zookeeper.installed', 'zkpeer.joined')
 def quorum_add(zkpeer):
     nodes = zkpeer.get_nodes()

@@ -4,3 +4,8 @@ options:
         default: ''
         description: |
             URL from which to fetch resources (e.g., Hadoop binaries) instead of Launchpad.
+    rest:
+        type: boolean
+        default: false
+        description: |
+            Set to true/false to enable/disable the REST Api server.
