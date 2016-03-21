@@ -1,9 +1,8 @@
 import jujuresources
-
 from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
                                        open_port, close_port)
-
 from jujubigdata import utils
+from subprocess import CalledProcessError, check_output
 
 
 def getid(unit_id):
@@ -28,8 +27,7 @@ class Zookeeper(object):
         self.setup_zookeeper_config()
 
     def setup_zookeeper_config(self):
-        """
-        Setup Zookeeper configuration based on default config.
+        """Setup Zookeeper configuration based on default config.
 
         Copy the default configuration files to zookeeper_conf property
         defined in dist.yaml
@@ -59,8 +57,7 @@ class Zookeeper(object):
             env['ZOO_LOG_DIR'] = self.dist_config.path('zookeeper_log_dir')
 
     def initial_config(self):
-        """
-        Perform initial Zookeeper configuration.
+        """Perform initial Zookeeper configuration.
 
         The entries of the form server.X list the servers that make up the ZooKeeper
         service. When the server starts up, it knows which server it is by looking for
@@ -95,7 +92,6 @@ class Zookeeper(object):
 
     def start(self):
         zookeeper_home = self.dist_config.path('zookeeper')
-        self.stop()
         utils.run_as('zookeeper', '{}/bin/zkServer.sh'.format(zookeeper_home), 'start')
 
     def stop(self):
@@ -106,8 +102,7 @@ class Zookeeper(object):
         self.dist_config.remove_dirs()
 
     def update_zoo_cfg(self, zkid=getid(local_unit()), ip=unit_private_ip(), remove=False):
-        """
-        Add or remove Zookeeper units from zoo.cfg.
+        """Add or remove Zookeeper units from zoo.cfg.
 
         Configuration for a Zookeeper quorum requires listing all unique servers
         (server.X=<ip>:2888:3888) in the zoo.cfg. This function manages server.X
@@ -139,3 +134,11 @@ class Zookeeper(object):
                 contents.append(key + value + "\n")
             with open(zookeeper_cfg, 'w', encoding='utf-8') as f:
                 f.writelines(contents)
+
+    def get_zk_count(self):
+        """Return a count of all zookeeper servers in zoo.cfg."""
+        zookeeper_cfg = "{}/zoo.cfg".format(self.dist_config.path('zookeeper_conf'))
+        try:
+            return check_output(['grep', '-c', '^server\.[0-9]', zookeeper_cfg])
+        except CalledProcessError:
+            print ("Could not grep %s" % zookeeper_cfg)

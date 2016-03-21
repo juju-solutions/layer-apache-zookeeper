@@ -1,5 +1,5 @@
-from charms.reactive import when, when_file_changed, when_not
-from charms.reactive import set_state
+from charms.reactive import set_state, when, when_not
+from charms.reactive.helpers import any_file_changed
 
 from charmhelpers.core import hookenv
 
@@ -30,32 +30,56 @@ def start_zookeeper():
 
 
 @when('zookeeper.started')
-@when_file_changed(DistConfig().path('zookeeper_conf') / 'zoo.cfg')
-def restart_zookeeper():
-    hookenv.status_set('maintenance', 'Server config changed: restarting Zookeeper')
-    zk = Zookeeper()
-    zk.stop()
-    zk.start()
-    hookenv.status_set('active', 'Ready')
+def restart_zookeeper_if_config_changed():
+    """Restart Zookeeper if zoo.cfg has changed.
+
+    As peers come and go, zoo.cfg will be updated. When that file changes,
+    restart the Zookeeper service and set an appropriate status message.
+    """
+    zoo_cfg = DistConfig().path('zookeeper_conf') / 'zoo.cfg'
+    if any_file_changed([zoo_cfg]):
+        hookenv.status_set('maintenance', 'Server config changed: restarting Zookeeper')
+        zk = Zookeeper()
+        zk.stop()
+        zk.start()
+        zk_count = int(zk.get_zk_count())
+        extra_status = ""
+        if zk_count < 3:
+            extra_status = ": less than 3 is suboptimal"
+        elif (zk_count % 2 == 0):
+            extra_status = ": even number is suboptimal"
+        hookenv.status_set('active', 'Ready (%d zk units%s)' % (zk_count, extra_status))
 
 
-@when('zookeeper.installed', 'zkpeer.joined')
+@when('zookeeper.started', 'zkpeer.joined')
 def quorum_add(zkpeer):
-    nodes = zkpeer.get_nodes()
+    """Add a zookeeper peer.
+
+    Add the unit that just joined, restart Zookeeper, and remove the
+    '.joined' state so we don't fall in here again (until another peer joins).
+    """
+    nodes = zkpeer.get_nodes()  # single node since we dismiss .joined below
     zk = Zookeeper()
     zk.increase_quorum(nodes)
+    restart_zookeeper_if_config_changed()
     zkpeer.dismiss_joined()
 
 
-@when('zookeeper.installed', 'zkpeer.departed')
+@when('zookeeper.started', 'zkpeer.departed')
 def quorum_remove(zkpeer):
-    nodes = zkpeer.get_nodes()
+    """Remove a zookeeper peer.
+
+    Remove the unit that just departed, restart Zookeeper, and remove the
+    '.departed' state so we don't fall in here again (until another peer leaves).
+    """
+    nodes = zkpeer.get_nodes()  # single node since we dismiss .departed below
     zk = Zookeeper()
     zk.decrease_quorum(nodes)
+    restart_zookeeper_if_config_changed()
     zkpeer.dismiss_departed()
 
 
-@when('zookeeper.installed', 'zkclient.joined')
+@when('zookeeper.started', 'zkclient.joined')
 def serve_client(client):
     port = DistConfig().port('zookeeper')
     client.send_port(port)
