@@ -20,6 +20,10 @@ dirs:
         path: '/var/log/zookeeper'
         owner: 'zookeeper'
         perms: 0755
+    # Used for REST ant build (java thinks user.home == /home/zookeeper)
+    zookeeper_home:
+        path: '/home/zookeeper'
+        owner: 'zookeeper'
 ports:
     # Ports that need to be exposed, overridden, or manually specified.
     # Only expose ports serving a UI or external API (i.e., namenode and

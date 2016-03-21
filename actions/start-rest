@@ -3,7 +3,9 @@ set -e
 
 source /etc/environment
 if [[ -d ${ZOO_BIN_DIR} ]]; then
-  cd ${ZOO_BIN_DIR}/..
+  ZOO_HOME_DIR=${ZOO_BIN_DIR}/..
+  chown -R zookeeper:zookeeper ${ZOO_HOME_DIR}
+  cd ${ZOO_HOME_DIR}
   su zookeeper -c "ant"
 fi
 if [[ -d ${ZOO_REST_DIR} ]]; then
