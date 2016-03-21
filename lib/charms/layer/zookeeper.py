@@ -1,6 +1,9 @@
+import time
 import jujuresources
 from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
-                                       open_port, close_port)
+                                       open_port, close_port, log, config)
+from charmhelpers.core.host import chownr, chdir
+from charmhelpers.core import unitdata
 from jujubigdata import utils
 from subprocess import CalledProcessError, check_output
 
@@ -26,6 +29,16 @@ class Zookeeper(object):
                               skip_top_level=True)
         self.setup_zookeeper_config()
 
+    def init_zkrest(self):
+        # Zookeeper user needs to compile the rest contrib server.
+        # So zookeeper needs to:
+        # 1. Have a home dir for ant cache to exist
+        # 2. Write to the /usr/lib/zookeeper
+        chownr(self.dist_config.path('zookeeper'), 'zookeeper', 'zookeeper', chowntopdir=True)
+        with chdir(self.dist_config.path('zookeeper')):
+            utils.run_as('zookeeper', 'ant')
+        unitdata.kv().set('rest.initialised', True)
+
     def setup_zookeeper_config(self):
         """Setup Zookeeper configuration based on default config.
 
@@ -49,12 +62,14 @@ class Zookeeper(object):
 
         # Configure zookeeper environment for all users
         zookeeper_bin = self.dist_config.path('zookeeper') / 'bin'
+        zookeeper_rest = self.dist_config.path('zookeeper') / 'src/contrib/rest'
         with utils.environment_edit_in_place('/etc/environment') as env:
             if zookeeper_bin not in env['PATH']:
                 env['PATH'] = ':'.join([env['PATH'], zookeeper_bin])
             env['ZOOCFGDIR'] = self.dist_config.path('zookeeper_conf')
             env['ZOO_BIN_DIR'] = zookeeper_bin
             env['ZOO_LOG_DIR'] = self.dist_config.path('zookeeper_log_dir')
+            env['ZOO_REST_DIR'] = zookeeper_rest
 
     def initial_config(self):
         """Perform initial Zookeeper configuration.
@@ -93,10 +108,37 @@ class Zookeeper(object):
     def start(self):
         zookeeper_home = self.dist_config.path('zookeeper')
         utils.run_as('zookeeper', '{}/bin/zkServer.sh'.format(zookeeper_home), 'start')
+        if config().get('rest'):
+            self.start_rest()
 
     def stop(self):
         zookeeper_home = self.dist_config.path('zookeeper')
         utils.run_as('zookeeper', '{}/bin/zkServer.sh'.format(zookeeper_home), 'stop')
+        self.stop_rest()
+
+    def start_rest(self):
+        if not unitdata.kv().get('rest.initialised'):
+            log("Initialising REST API")
+            self.init_zkrest()
+        self.stop_rest()
+        zookeeper_rest = self.dist_config.path('zookeeper') / 'src/contrib/rest'
+        zkrest_logs = self.dist_config.path('zookeeper_log_dir') / 'rest.out'
+        zkrest_buildxml = zookeeper_rest / 'build.xml'
+
+        utils.run_bg_as('zookeeper', zkrest_logs, 'nohup', 'ant', 'run', '-f', zkrest_buildxml)
+        # We set a generous timeout here, for _realy_ slow networks.
+        pids = self.wait_process_start('RestMain', 240, 'zookeeper')
+
+        if len(pids) == 0:
+            raise Exception("Zookeeper REST API did not start.")
+        if len(pids) > 1:
+            raise Exception("Multiple Zookeeper REST API servers running.")
+        log("REST API started (pid: {})".format(pids[0]))
+
+    def stop_rest(self):
+        pids = self.wait_process_start('RestMain', 0, 'zookeeper')
+        if len(pids) != 0:
+            utils.run_as('root', 'pkill', '-f', 'RestMain')
 
     def cleanup(self):
         self.dist_config.remove_dirs()
@@ -142,3 +184,29 @@ class Zookeeper(object):
             return check_output(['grep', '-c', '^server\.[0-9]', zookeeper_cfg])
         except CalledProcessError:
             print ("Could not grep %s" % zookeeper_cfg)
+
+    def wait_process_start(self, name, wait_secs, user=None):
+        """
+        Wait for a process to appear and return its pid
+
+        :param str name: Cmd pattern to search for
+        :param int wait_sec: Seconds to wait for the process to spawn
+        :param string user: Owner of the process
+        :returns: list of process ids found. May return an empty list
+        """
+        timeout = time.time() + wait_secs
+        pgrep_args = ['pgrep', '-f', name]
+        if user:
+            pgrep_args += ['-u', user]
+
+        while True:
+            try:
+                pids = check_output(pgrep_args)
+                return pids.splitlines()
+            except CalledProcessError:
+                log("REST service not running")
+
+            if time.time() > timeout:
+                return []
+
+            time.sleep(5)

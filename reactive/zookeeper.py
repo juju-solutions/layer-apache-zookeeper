@@ -1,10 +1,7 @@
 from charms.reactive import set_state, when, when_not
 from charms.reactive.helpers import any_file_changed
-
 from charmhelpers.core import hookenv
-
 from charms.layer.zookeeper import Zookeeper
-
 from jujubigdata.utils import DistConfig
 
 
@@ -51,6 +48,18 @@ def restart_zookeeper_if_config_changed():
         hookenv.status_set('active', 'Ready (%d zk units%s)' % (zk_count, extra_status))
 
 
+@when('zookeeper.started', 'config.changed.rest')
+def rest_config():
+    hookenv.status_set('maintenance', 'Updating REST service')
+    zk = Zookeeper()
+    config = hookenv.config()
+    if config['rest']:
+        zk.start_rest()
+    else:
+        zk.stop_rest()
+    hookenv.status_set('active', 'Ready')
+
+
 @when('zookeeper.started', 'zkpeer.joined')
 def quorum_add(zkpeer):
     """Add a zookeeper peer.
@@ -81,5 +90,7 @@ def quorum_remove(zkpeer):
 
 @when('zookeeper.started', 'zkclient.joined')
 def serve_client(client):
-    port = DistConfig().port('zookeeper')
-    client.send_port(port)
+    config = DistConfig()
+    port = config.port('zookeeper')
+    rest_port = config.port('zookeeper-rest')
+    client.send_port(port, rest_port)
