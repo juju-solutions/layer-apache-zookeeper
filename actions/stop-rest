@@ -1,0 +1,6 @@
+#!/bin/bash
+set -e
+
+if pgrep -f RestMain; then
+  pkill -f RestMain
+fi
