@@ -13,11 +13,11 @@ class TestDeploy(unittest.TestCase):
     def setUpClass(cls):
         cls.d = amulet.Deployment(series='trusty')
 
-        cls.d.add('zookeeper', charm='cs:~bigdata-dev/trusty/apache-zookeeper', units=3)
-         
+        cls.d.add('zookeeper', charm='cs:trusty/apache-zookeeper', units=3)
+
         cls.d.setup(timeout=900)
         cls.d.sentry.wait(timeout=1800)
-        cls.unit = cls.d.sentry.unit['zookeeper'][0]
+        cls.unit = cls.d.sentry['zookeeper'][0]
 
     def test_deploy(self):
         output, retcode = self.unit.run("pgrep -a java")
