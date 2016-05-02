@@ -3,7 +3,7 @@ import jujuresources
 from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
                                        open_port, close_port, log, config)
 from charmhelpers.core.host import chownr, chdir
-from charmhelpers.core import unitdata
+from charmhelpers.core import unitdata, hookenv
 from jujubigdata import utils
 from subprocess import CalledProcessError, check_output
 
@@ -183,7 +183,8 @@ class Zookeeper(object):
         try:
             return check_output(['grep', '-c', '^server\.[0-9]', zookeeper_cfg])
         except CalledProcessError:
-            print ("Could not grep %s" % zookeeper_cfg)
+            hookenv.log("Could not grep %s" % zookeeper_cfg, hookenv.ERROR)
+            return 0
 
     def wait_process_start(self, name, wait_secs, user=None):
         """
