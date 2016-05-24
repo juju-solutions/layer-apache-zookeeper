@@ -5,7 +5,7 @@ from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
 from charmhelpers.core.host import chownr, chdir
 from charmhelpers.core import unitdata, hookenv
 from jujubigdata import utils
-from subprocess import CalledProcessError, check_output
+from subprocess import CalledProcessError, check_call, check_output
 
 
 def getid(unit_id):
@@ -138,7 +138,10 @@ class Zookeeper(object):
     def stop_rest(self):
         pids = self.wait_process_start('RestMain', 0, 'zookeeper')
         if len(pids) != 0:
-            utils.run_as('root', 'pkill', '-f', 'RestMain')
+            try:
+                check_call(['pkill', '-f', 'RestMain'])
+            except CalledProcessError:
+                log("Error when attempting to pkill RestMain")
 
     def cleanup(self):
         self.dist_config.remove_dirs()
