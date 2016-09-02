@@ -100,4 +100,5 @@ def serve_client(client):
     config = DistConfig()
     port = config.port('zookeeper')
     rest_port = config.port('zookeeper-rest')
-    client.send_port(port, rest_port)
+    host = hookenv.config().get('network_interface')
+    client.send_connection(port, rest_port, host)
