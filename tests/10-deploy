@@ -2,6 +2,7 @@
 
 import unittest
 import amulet
+import re
 
 
 class TestDeploy(unittest.TestCase):
@@ -13,7 +14,7 @@ class TestDeploy(unittest.TestCase):
     def setUpClass(cls):
         cls.d = amulet.Deployment(series='trusty')
 
-        cls.d.add('zookeeper', charm='cs:trusty/apache-zookeeper', units=3)
+        cls.d.add('zookeeper', 'apache-zookeeper', units=3)
 
         cls.d.setup(timeout=900)
         cls.d.sentry.wait(timeout=1800)
@@ -22,6 +23,25 @@ class TestDeploy(unittest.TestCase):
     def test_deploy(self):
         output, retcode = self.unit.run("pgrep -a java")
         assert 'QuorumPeerMain' in output, "zookeeper QuorumPeerMain daemon is not started"
+
+    def test_bind_port(self):
+        """
+        Test to verify that we update client port bindings successfully.
+
+        """
+        self.d.configure('zookeeper', {'network_interface': 'eth0'})
+
+        try:
+            self.d.sentry.wait_for_messages({'zookeeper': 'Server config changed: restarting Zookeeper'}, timeout=60)
+            self.d.sentry.wait_for_messages({'zookeeper': 'Ready (3 zk units)'}, timeout=900)
+        except amulet.TimeoutError:
+            self.d.log("Got a timeout, but trying to next part of test_bind_port regardless.")
+        ret = self.unit.run(
+            'grep clientPortAddress /etc/zookeeper/conf/zoo.cfg')[0]
+        matcher = re.compile(
+            "^clientPortAddress=\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*")
+
+        self.assertTrue(matcher.match(ret))
 
 
 if __name__ == '__main__':

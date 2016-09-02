@@ -1,5 +1,7 @@
 import time
 import jujuresources
+import netifaces
+import ipaddress
 from charmhelpers.core.hookenv import (local_unit, unit_private_ip,
                                        open_port, close_port, log, config)
 from charmhelpers.core.host import chownr, chdir
@@ -8,9 +10,81 @@ from jujubigdata import utils
 from subprocess import CalledProcessError, check_call, check_output
 
 
+class BigDataError(Exception):
+    pass
+
+
 def getid(unit_id):
     """Utility function to return the unit number."""
     return unit_id.split("/")[1]
+
+
+def get_ip_for_interface(network_interface, ip_version=4):
+    """
+    Helper to return the ip address of this machine on a specific
+    interface.
+
+    @param str network_interface: either the name of the
+    interface, or a CIDR range, in which we expect the interface's
+    ip to fall. Also accepts 0.0.0.0 (and variants, like 0/0) as a
+    special case, which will simply return what you passed in.
+
+    """
+    def u(s):
+        """Force unicode."""
+
+        return getattr(s, 'decode', lambda e: s)('utf-8')
+
+    interfaces = netifaces.interfaces()
+    value_error_msg = ("Got an unexpected ValueError parsing {}. Continuing "
+                       "to search for a valid interface.")
+
+    # Handle the simple case, where the user passed in an interface name.
+    if network_interface in interfaces:
+        for af_inet in (netifaces.AF_INET, netifaces.AF_INET6):
+            for interface in netifaces.ifaddresses(
+                    network_interface).get(af_inet, []):
+                addr = interface['addr']
+                try:
+                    ipaddress.ip_interface(u(addr))
+                    return str(addr)
+                except ValueError:
+                    if not addr.startswith('fe80'):
+                        hookenv.log(value_error_msg.format(addr))
+                    continue
+
+    # Kevin says this works
+    if network_interface == '0/0':
+        return network_interface
+
+    try:
+        subnet = ipaddress.ip_interface(u(network_interface)).network
+    except ValueError:
+        raise BigDataError(
+            u"This machine does not have an interface '{}'".format(
+                network_interface))
+
+    # Handle the case where 0.0.0.0 or similar was passed in -- in
+    # this case, we want to simply return it.
+    if subnet.is_unspecified or network_interface == '0.0.0.0/0':
+        return network_interface
+
+    # Config specified a CIDR range; find an interface in that range.
+    for interface in interfaces:
+        af_inet = netifaces.AF_INET if subnet.version == 4 else netifaces.AF_INET6
+        for addr in netifaces.ifaddresses(interface).get(af_inet, []):
+            addr = addr['addr']
+            try:
+                if ipaddress.ip_interface(u(addr)) in subnet:
+                    return addr
+            except ValueError:
+                if not addr.startswith('fe80'):
+                    hookenv.log(value_error_msg.format(addr))
+                continue
+
+    raise BigDataError(
+        u"This machine has no interfaces in CIDR range {}".format(
+            network_interface))
 
 
 class Zookeeper(object):
@@ -88,6 +162,7 @@ class Zookeeper(object):
 
         # update_zoo_cfg maintains a server.X entry in this unit's zoo.cfg
         self.update_zoo_cfg()
+        self.update_bind_address()
 
     def increase_quorum(self, node_list):
         for unitId, unitIp in node_list:
@@ -179,6 +254,22 @@ class Zookeeper(object):
                 contents.append(key + value + "\n")
             with open(zookeeper_cfg, 'w', encoding='utf-8') as f:
                 f.writelines(contents)
+
+    def update_bind_address(self):
+        """
+        Possibly update network interface bindings
+
+        """
+        network_interface = config().get('network_interface')
+
+        if network_interface:
+            network_interface = get_ip_for_interface(network_interface)
+            zookeeper_cfg = "{}/zoo.cfg".format(
+                self.dist_config.path('zookeeper_conf'))
+
+            utils.re_edit_in_place(zookeeper_cfg, {
+                r'^clientPortAddress.*': 'clientPortAddress={}'.format(
+                    network_interface)}, append_non_matches=True)
 
     def get_zk_count(self):
         """Return a count of all zookeeper servers in zoo.cfg."""

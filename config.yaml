@@ -9,3 +9,15 @@ options:
         default: false
         description: |
             Set to true/false to enable/disable the REST Api server.
+    network_interface:
+        type: string
+        default: ''
+        description: |
+            A string containing the name of a network interface, or a
+            CIDR range. For split network environments, or for other
+            secure environments, you may wish to bind to a specific
+            network interface. You may either name the interface here,
+            or specify a CIDR range that contains the IP of the
+            network interface. The charm will translate that into a
+            specific IP address to bind to, and drop that into the
+            Zookeeper config. To reset the bindings, pass in 0.0.0.0.
