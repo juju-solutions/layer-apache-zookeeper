@@ -1,7 +1,7 @@
 from charms.reactive import set_state, when, when_not
 from charms.reactive.helpers import any_file_changed, data_changed
 from charmhelpers.core import hookenv
-from charms.layer.zookeeper import Zookeeper
+from charms.layer.zookeeper import Zookeeper, get_ip_for_interface
 from jujubigdata.utils import DistConfig
 
 
@@ -100,5 +100,5 @@ def serve_client(client):
     config = DistConfig()
     port = config.port('zookeeper')
     rest_port = config.port('zookeeper-rest')
-    host = hookenv.config().get('network_interface')
+    host = get_ip_for_interface(hookenv.config().get('network_interface'))
     client.send_connection(port, rest_port, host)
