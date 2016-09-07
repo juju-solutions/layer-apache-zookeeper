@@ -100,5 +100,8 @@ def serve_client(client):
     config = DistConfig()
     port = config.port('zookeeper')
     rest_port = config.port('zookeeper-rest')
-    host = get_ip_for_interface(hookenv.config().get('network_interface'))
+    host = None
+    network_interface = hookenv.config().get('network_interface')
+    if network_interface:
+        host = get_ip_for_interface(network_interface)
     client.send_connection(port, rest_port, host)
