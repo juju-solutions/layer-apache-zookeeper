@@ -1,7 +1,7 @@
 from charms.reactive import set_state, when, when_not
-from charms.reactive.helpers import any_file_changed
+from charms.reactive.helpers import any_file_changed, data_changed
 from charmhelpers.core import hookenv
-from charms.layer.zookeeper import Zookeeper
+from charms.layer.zookeeper import Zookeeper, get_ip_for_interface
 from jujubigdata.utils import DistConfig
 
 
@@ -33,6 +33,13 @@ def restart_zookeeper_if_config_changed():
     As peers come and go, zoo.cfg will be updated. When that file changes,
     restart the Zookeeper service and set an appropriate status message.
     """
+
+    # Possibly update bind address
+    network_interface = hookenv.config().get('network_interface')
+    if data_changed("zookeeper.bind_address", network_interface):
+        zk = Zookeeper()
+        zk.update_bind_address()
+
     zoo_cfg = DistConfig().path('zookeeper_conf') / 'zoo.cfg'
     if any_file_changed([zoo_cfg]):
         hookenv.status_set('maintenance', 'Server config changed: restarting Zookeeper')
@@ -93,4 +100,8 @@ def serve_client(client):
     config = DistConfig()
     port = config.port('zookeeper')
     rest_port = config.port('zookeeper-rest')
-    client.send_port(port, rest_port)
+    host = None
+    network_interface = hookenv.config().get('network_interface')
+    if network_interface:
+        host = get_ip_for_interface(network_interface)
+    client.send_connection(port, rest_port, host)
