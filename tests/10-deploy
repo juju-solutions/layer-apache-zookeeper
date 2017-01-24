@@ -12,7 +12,7 @@ class TestDeploy(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.d = amulet.Deployment(series='trusty')
+        cls.d = amulet.Deployment(series='xenial')
 
         cls.d.add('zookeeper', 'apache-zookeeper', units=3)
 
