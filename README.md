@@ -1,3 +1,13 @@
+# NOTICE
+The Apache Zookeeper charm has been superseded by the Zookeeper charm
+from Apache Bigtop:
+
+https://github.com/apache/bigtop/tree/master/bigtop-packages/src/charm/zookeeper/layer-zookeeper
+
+This `layer-apache-zookeeper` repository does not receive regular updates,
+and is only here as a reference for legacy deployments.
+
+
 ## Overview
 Apache ZooKeeper is a high-performance coordination service for distributed
 applications. It exposes common services such as naming, configuration
